@@ -1,5 +1,5 @@
-import UsageChart from "./components/UsageChart";
-import{
+import { useState } from "react";
+import {
   Droplets,
   Gauge,
   Activity,
@@ -10,15 +10,23 @@ import{
   Bell,
   Settings,
 } from "lucide-react";
-
+import SettingsPage from "./components/Settings";
+import Alerts from "./components/Alerts";
+import WaterQuality from "./components/WaterQuality";
+import SmartWaterManagement from "./components/SmartWaterManagement";
+import UsageChart from "./components/UsageChart";
 import { sensorData, alerts } from "./data/mockdata";
 import "./App.css";
 
 function App() {
+  // Shared readings used by the entire dashboard
+  const [tankLevel, setTankLevel] = useState(sensorData.tankLevel);
+  const [flowRate, setFlowRate] = useState(sensorData.flowRate);
+
   const metrics = [
     {
       title: "Tank Level",
-      value: sensorData.tankLevel,
+      value: tankLevel,
       unit: "%",
       icon: Gauge,
     },
@@ -36,16 +44,46 @@ function App() {
     },
     {
       title: "Water Flow",
-      value: sensorData.flowRate,
+      value: flowRate.toFixed(1),
       unit: "L/min",
       icon: Activity,
     },
   ];
 
+  // Keep tank and flow alerts synchronized with current readings
+  const currentAlerts = alerts.map((alert) => {
+    if (alert.id === 1) {
+      const isWarning = tankLevel < 20 || tankLevel > 90;
+
+      return {
+        ...alert,
+        title:
+          tankLevel < 20
+            ? "Low tank level"
+            : tankLevel > 90
+            ? "High tank level"
+            : "Tank level normal",
+        description: `Tank is currently ${tankLevel}% full.`,
+        type: isWarning ? "warning" : "success",
+      };
+    }
+
+    if (alert.id === 3) {
+      return {
+        ...alert,
+        description: `Current flow: ${flowRate.toFixed(1)} L/min.`,
+      };
+    }
+
+    return alert;
+  });
+
   return (
     <div className="app">
       <aside className="sidebar">
-        <h2><Droplets /> Aqua Sense</h2>
+        <h2>
+          <Droplets /> Aqua Sense
+        </h2>
         <p className="tagline">Smart Water Guardian</p>
 
         <nav>
@@ -69,16 +107,22 @@ function App() {
 
         <section id="overview">
           <h2>System Overview</h2>
+
           <div className="metrics">
             {metrics.map((item) => {
               const Icon = item.icon;
+
               return (
                 <div className="metric-card" key={item.title}>
                   <div className="metric-heading">
                     {item.title}
                     <Icon />
                   </div>
-                  <h3>{item.value} <small>{item.unit}</small></h3>
+
+                  <h3>
+                    {item.value} <small>{item.unit}</small>
+                  </h3>
+
                   <p>Illustrative sensor reading</p>
                 </div>
               );
@@ -86,49 +130,22 @@ function App() {
           </div>
         </section>
 
-        <section id="quality" className="panel">
-          <h2>Water Quality Monitoring</h2>
-          <p>pH: {sensorData.ph}</p>
-          <p>TDS: {sensorData.tds} ppm</p>
-          <p>Turbidity: {sensorData.turbidity} NTU</p>
-          <p>Temperature: {sensorData.temperature} °C</p>
-          <small>
-            Screening indicators only. These readings do not certify
-            drinking-water safety.
-          </small>
-        </section>
+        <WaterQuality />
 
-        <section id="management" className="panel">
-          <h2>Smart Water Management</h2>
-          <p>Tank level: {sensorData.tankLevel}%</p>
-          <p>Current flow: {sensorData.flowRate} L/min</p>
-          <p>Tank status: Normal (demo)</p>
-          <p>Leak detection: Awaiting monitoring data</p>
-        </section>
+        <SmartWaterManagement
+          tankLevel={tankLevel}
+          setTankLevel={setTankLevel}
+          flowRate={flowRate}
+          setFlowRate={setFlowRate}
+        />
+
         <section id="analytics">
-  <h2>Water Usage Analytics</h2>
-  <UsageChart />
-</section>
+          <h2>Water Usage Analytics</h2>
+          <UsageChart />
+        </section>
 
-        <section id="alerts">
-  <h2>Water System Alerts</h2>
-
-  <div className="alerts-list">
-    {alerts.map((alert) => (
-      <div className="alert-item" key={alert.id}>
-        <div>
-          <h3>{alert.title}</h3>
-          <p>{alert.description}</p>
-        </div>
-
-        <span className={`alert-status ${alert.type}`}>
-          {alert.type === "success" ? "Normal" : "Info"}
-        </span>
-      </div>
-    ))}
-  </div>
-</section>
-
+        <Alerts />
+        <SettingsPage />
       </main>
     </div>
   );
